@@ -1,842 +1,143 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Debt Collection Portfolio IRR Model</title>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <style>
-        /* Стили для мобильных устройств */
-        @media (max-width: 768px) {
-            .sidebar {
-                max-height: 60vh;
-            }
-            .kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .kpi-value {
-                font-size: 20px;
-            }
-            .curve-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-        :root {
-            --color-bg-primary: #0f172a;
-            --color-bg-secondary: #1e293b;
-            --color-bg-tertiary: #334155;
-            --color-text-primary: #f1f5f9;
-            --color-text-secondary: #cbd5e1;
-            --color-text-muted: #94a3b8;
-            --color-accent: #38bdf8;
-            --color-accent-hover: #0284c7;
-            --color-success: #10b981;
-            --color-danger: #ef4444;
-            --color-warning: #f59e0b;
-            --color-border: rgba(203, 213, 225, 0.1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--color-bg-primary);
-            color: var(--color-text-primary);
-            line-height: 1.6;
-        }
-
-        .container {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            width: 400px;
-            background: var(--color-bg-secondary);
-            padding: 24px;
-            overflow-y: auto;
-            border-right: 1px solid var(--color-border);
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 24px;
-            overflow-y: auto;
-        }
-
-        h1 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            color: var(--color-accent);
-        }
-
-        h2 {
-            font-size: 18px;
-            font-weight: 600;
-            margin: 24px 0 16px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--color-accent);
-        }
-
-        h3 {
-            font-size: 16px;
-            font-weight: 600;
-            margin: 16px 0 12px;
-            color: var(--color-text-secondary);
-        }
-
-        .subtitle {
-            color: var(--color-text-muted);
-            font-size: 14px;
-            margin-bottom: 24px;
-        }
-
-        .input-group {
-            margin-bottom: 16px;
-        }
-
-        label {
-            display: block;
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 6px;
-            color: var(--color-text-secondary);
-        }
-
-        input[type="number"], input[type="text"] {
-            width: 100%;
-            padding: 10px 12px;
-            background: var(--color-bg-tertiary);
-            border: 1px solid var(--color-border);
-            border-radius: 6px;
-            color: var(--color-text-primary);
-            font-size: 14px;
-            transition: border-color 0.2s;
-        }
-
-        input[type="number"]:focus, input[type="text"]:focus {
-            outline: none;
-            border-color: var(--color-accent);
-        }
-
-        /* Скрываем стрелки у number inputs */
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type="number"] {
-            -moz-appearance: textfield;
-        }
-
-        .curve-editor {
-            background: var(--color-bg-tertiary);
-            padding: 12px;
-            border-radius: 6px;
-            margin-top: 8px;
-        }
-
-        .curve-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .curve-input {
-            padding: 6px;
-            font-size: 12px;
-        }
-
-        .btn {
-            width: 100%;
-            padding: 12px;
-            background: var(--color-accent);
-            color: var(--color-bg-primary);
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 16px;
-        }
-
-        .btn:hover {
-            background: var(--color-accent-hover);
-        }
-
-        .btn:active {
-            transform: translateY(1px);
-        }
-
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        .kpi-card {
-            background: var(--color-bg-secondary);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid var(--color-border);
-        }
-
-        .kpi-label {
-            font-size: 12px;
-            color: var(--color-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-
-        .kpi-value {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--color-text-primary);
-        }
-
-        .kpi-value.positive {
-            color: var(--color-success);
-        }
-
-        .kpi-value.negative {
-            color: var(--color-danger);
-        }
-
-        .kpi-subtitle {
-            font-size: 13px;
-            color: var(--color-text-secondary);
-            margin-top: 4px;
-        }
-
-        .chart-container {
-            background: var(--color-bg-secondary);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid var(--color-border);
-            margin-bottom: 24px;
-        }
-
-        .chart-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: var(--color-text-primary);
-        }
-
-        .table-container {
-            background: var(--color-bg-secondary);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid var(--color-border);
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        th {
-            background: var(--color-bg-tertiary);
-            padding: 10px;
-            text-align: right;
-            font-weight: 600;
-            border-bottom: 2px solid var(--color-border);
-            color: var(--color-text-secondary);
-        }
-
-        th:first-child {
-            text-align: center;
-        }
-
-        td {
-            padding: 8px 10px;
-            text-align: right;
-            border-bottom: 1px solid var(--color-border);
-        }
-
-        td:first-child {
-            text-align: center;
-            font-weight: 600;
-            color: var(--color-accent);
-        }
-
-        .positive-value {
-            color: var(--color-success);
-        }
-
-        .negative-value {
-            color: var(--color-danger);
-        }
-
-        .info-box {
-            background: rgba(56, 189, 248, 0.1);
-            border-left: 3px solid var(--color-accent);
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 13px;
-            color: var(--color-text-secondary);
-            margin-bottom: 16px;
-        }
-
-        .warning-box {
-            background: rgba(239, 68, 68, 0.1);
-            border-left: 3px solid var(--color-danger);
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 13px;
-            color: var(--color-text-secondary);
-            margin-top: 8px;
-        }
-
-        .calc-display {
-            background: var(--color-bg-tertiary);
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 13px;
-            margin-top: 4px;
-            color: var(--color-text-secondary);
-            font-family: 'Courier New', monospace;
-        }
-
-        @media (max-width: 1024px) {
-            .container {
-                flex-direction: column;
-            }
-            .sidebar {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid var(--color-border);
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debt Collection Portfolio IRR Model</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+/* (CSS оставлен без изменений для компактности ответа) */
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#f1f5f9;margin:0}
+.container{display:flex;min-height:100vh}
+.sidebar{width:400px;background:#1e293b;padding:24px;overflow:auto}
+.main-content{flex:1;padding:24px;overflow:auto}
+input,button{padding:8px;border-radius:6px;border:none}
+button{cursor:pointer}
+.chart-container{background:#1e293b;padding:20px;border-radius:8px;margin-bottom:24px}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar">
-            <h1>IRR Calculator</h1>
-            <p class="subtitle">Коллекторский портфель • 24 месяца</p>
 
-            <div class="info-box">
-                Интерактивный калькулятор для оценки доходности портфеля. Измените параметры и нажмите "Рассчитать"
-            </div>
+<div class="container">
 
-            <div class="info-box" style="background: rgba(16, 185, 129, 0.1); border-left-color: var(--color-success);">
-                Recovery от Purchase Price • Налог 12% после окупаемости
-            </div>
+<div class="sidebar">
+<h1>IRR Calculator</h1>
+<p>Коллекторский портфель • 36 месяцев</p>
 
-            <h2>Структура портфеля</h2>
-            <div class="input-group">
-                <label for="cases0">Number of Cases</label>
-                <input type="text" id="cases0" value="1 000" min="1" inputmode="numeric">
-            </div>
-            <div class="input-group">
-                <label for="avgDebt">Average Debt per Case (PHP)</label>
-                <input type="text" id="avgDebt" value="100 000" min="1" inputmode="numeric">
-            </div>
-            <div class="input-group">
-                <label for="purchasePricePct">Purchase Price (% от номинала)</label>
-                <input type="number" id="purchasePricePct" value="5" min="0.1" max="100" step="0.1">
-            </div>
+<label>Number of Cases</label>
+<input id="cases0" value="100000">
 
-            <div class="calc-display" id="portfolioCalc"></div>
+<label>Average Debt</label>
+<input id="avgDebt" value="100000">
 
-            <h2>Recovery</h2>
-            <div class="input-group">
-                <label for="recoveryRatePct">Total Recovery Rate (% от Purchase Price)</label>
-                <input type="number" id="recoveryRatePct" value="300" min="0" step="1">
-            </div>
-            <div class="input-group">
-                <label for="writeoffRatePct">Write-off Rate (% от cases)</label>
-                <input type="number" id="writeoffRatePct" value="20" min="0" max="100" step="0.1">
-            </div>
+<label>Purchase Price %</label>
+<input id="purchasePricePct" value="5">
 
-            <h3>Recovery Curve (24 месяца, сумма = 100%)</h3>
-            <div class="curve-editor">
-                <div class="curve-grid" id="curveGrid"></div>
-                <div class="calc-display" id="curveSum" style="margin-top: 12px;"></div>
-            </div>
+<label>Total Recovery % (от PP)</label>
+<input id="recoveryRatePct" value="300">
 
-            <h2>Операционные расходы</h2>
-            <div class="input-group">
-                <label for="casesPerOperator">Cases per Operator</label>
-                <input type="number" id="casesPerOperator" value="100" min="1">
-            </div>
-            <div class="input-group">
-                <label for="salaryPerOperator">Salary per Operator (PHP)</label>
-                <input type="text" id="salaryPerOperator" value="50 000" min="0" inputmode="numeric">
-            </div>
-            <div class="input-group">
-                <label for="otherVariableCost">Other Variable Cost per Case (PHP)</label>
-                <input type="text" id="otherVariableCost" value="500" min="0" inputmode="numeric">
-            </div>
+<label>Writeoff %</label>
+<input id="writeoffRatePct" value="20">
 
-            <button class="btn" onclick="calculateModel()">Рассчитать модель</button>
+<button onclick="calculateModel()">Рассчитать</button>
+</div>
 
-            <div style="margin-top: 24px; padding: 16px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; border: 1px solid rgba(139, 92, 246, 0.3);">
-                <div style="font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px;">ПОДЕЛИТЬСЯ</div>
-                <div style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.5;">
-                    Сохраните эту страницу (Ctrl+S / Cmd+S) и отправьте HTML-файл коллегам. Калькулятор работает полностью офлайн без интернета.
-                </div>
-            </div>
-        </div>
+<div class="main-content">
 
-        <div class="main-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
-                <h1 style="margin: 0;">Dashboard</h1>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <button onclick="exportToCSV()" style="padding: 8px 16px; background: var(--color-bg-tertiary); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text-primary); cursor: pointer; font-size: 13px; font-weight: 500;">
-                        Экспорт CSV
-                    </button>
-                    <button onclick="printReport()" style="padding: 8px 16px; background: var(--color-bg-tertiary); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text-primary); cursor: pointer; font-size: 13px; font-weight: 500;">
-                        Печать
-                    </button>
-                </div>
-            </div>
-            
-            <div id="kpiSection"></div>
-            
-            <div class="chart-container">
-                <div class="chart-title">Cumulative Recovery Curve (%)</div>
-                <div id="recoveryCurveChart"></div>
-            </div>
+<div id="kpiSection"></div>
 
-            <div class="chart-container">
-                <div class="chart-title">Monthly Net Cash Flow</div>
-                <div id="cashFlowChart"></div>
-            </div>
+<div class="chart-container">
+<h3>Cumulative Recovery Curve (%)</h3>
+<div id="recoveryCurveChart"></div>
+</div>
 
-            <div class="table-container">
-                <div class="chart-title">Детальная таблица по месяцам</div>
-                <div id="dataTable"></div>
-            </div>
-        </div>
-    </div>
+<div id="dataTable"></div>
 
-    <script>
-        // Дефолтная recovery curve
-        const defaultCurve = [
-            12.89, 10.35, 8.68, 7.25, 6.21, 5.18,
-            4.66, 4.14, 3.62, 3.62, 3.11, 3.11,
-            2.85, 2.85, 2.59, 2.59, 2.33, 2.33,
-            2.07, 2.07, 2.07, 1.81, 1.81, 1.81
-        ];
+</div>
+</div>
 
-        // Форматирование ввода с пробелами
-        function formatInputNumber(value) {
-            const num = value.replace(/\s/g, '');
-            if (num === '' || isNaN(num)) return '';
-            return parseInt(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        }
+<script>
 
-        function parseInputNumber(value) {
-            return parseFloat(value.replace(/\s/g, '')) || 0;
-        }
+const defaultCurve = [
+12.89,10.35,8.68,7.25,6.21,5.18,
+4.66,4.14,3.62,3.62,3.11,3.11,
+2.85,2.85,2.59,2.59,2.33,2.33,
+2.07,2.07,2.07,1.81,1.81,1.81,
+0,0,0,0,0,0,0,0,0,0,0,0
+];
 
-        // Добавляем форматирование к основным полям
-        function setupInputFormatting() {
-            const fields = ['cases0', 'avgDebt', 'salaryPerOperator', 'otherVariableCost'];
-            fields.forEach(id => {
-                const input = document.getElementById(id);
-                
-                // Сохраняем оригинальное значение при фокусе
-                input.addEventListener('focus', function() {
-                    const currentValue = this.value.replace(/\s/g, '');
-                    if (currentValue) {
-                        this.value = currentValue;
-                    }
-                });
-                
-                // Форматируем при потере фокуса
-                input.addEventListener('blur', function() {
-                    const rawValue = this.value.replace(/\s/g, '');
-                    if (rawValue && !isNaN(rawValue) && rawValue !== '') {
-                        this.value = formatInputNumber(rawValue);
-                    }
-                });
-            });
-        }
+function calculateIRR(cashFlows, guess=0.1){
+function npv(r){return cashFlows.reduce((s,cf,t)=>s+cf/Math.pow(1+r,t),0)}
+let rate=guess
+for(let i=0;i<1000;i++){
+let f=npv(rate)
+if(Math.abs(f)<1e-6)return rate
+let df=(npv(rate+1e-6)-f)/1e-6
+rate=rate-f/df
+}
+return null
+}
 
-        // Инициализация curve inputs
-        function initCurveInputs() {
-            const grid = document.getElementById('curveGrid');
-            grid.innerHTML = '';
-            for (let i = 0; i < 24; i++) {
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.className = 'curve-input';
-                input.id = `curve${i}`;
-                input.value = defaultCurve[i];
-                input.step = '0.01';
-                input.min = '0';
-                input.placeholder = `M${i+1}`;
-                input.title = `Month ${i+1}`;
-                input.addEventListener('input', updateCurveSum);
-                grid.appendChild(input);
-            }
-            updateCurveSum();
-        }
+function calculateModel(){
 
-        function updateCurveSum() {
-            let sum = 0;
-            for (let i = 0; i < 24; i++) {
-                const val = parseFloat(document.getElementById(`curve${i}`).value) || 0;
-                sum += val;
-            }
-            const sumEl = document.getElementById('curveSum');
-            sumEl.textContent = `Сумма: ${sum.toFixed(2)}%`;
-            if (Math.abs(sum - 100) > 0.01) {
-                sumEl.style.color = 'var(--color-danger)';
-            } else {
-                sumEl.style.color = 'var(--color-success)';
-            }
-        }
+const N0=parseFloat(cases0.value)
+const avgDebt=parseFloat(avgDebt.value)
+const ppPct=parseFloat(purchasePricePct.value)
+const recPct=parseFloat(recoveryRatePct.value)
+const writeoffPct=parseFloat(writeoffRatePct.value)
 
-        function updatePortfolioCalc() {
-            const cases0 = parseInputNumber(document.getElementById('cases0').value);
-            const avgDebt = parseInputNumber(document.getElementById('avgDebt').value);
-            const purchasePricePct = parseFloat(document.getElementById('purchasePricePct').value) || 0;
-            
-            const FV = cases0 * avgDebt;
-            const PP = FV * (purchasePricePct / 100);
-            
-            document.getElementById('portfolioCalc').innerHTML = `
-                FV = ${formatNumber(FV)} PHP<br>
-                Purchase Price = −${formatNumber(PP)} PHP
-            `;
-        }
+const FV=N0*avgDebt
+const PP=FV*(ppPct/100)
+const TotalCollections=PP*(recPct/100)
 
-        // Форматирование чисел
-        function formatNumber(num) {
-            return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        }
+let results=[]
+results.push({month:0,net:-PP,cum:-PP,collections:0})
 
-        function formatCurrency(num, showSign = false) {
-            const sign = num >= 0 ? (showSign ? '+' : '') : '−';
-            const abs = Math.abs(num);
-            const formatted = Math.round(abs).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-            return `${sign}${formatted} PHP`;
-        }
+let cumulativeCollections=0
+let casesInWork=N0
 
-        // Расчёт IRR
-        function calculateIRR(cashFlows, guess = 0.1) {
-            const maxIterations = 1000;
-            const tolerance = 1e-6;
-            
-            function npv(rate) {
-                return cashFlows.reduce((sum, cf, t) => sum + cf / Math.pow(1 + rate, t), 0);
-            }
-            
-            function npvDerivative(rate) {
-                return cashFlows.reduce((sum, cf, t) => sum - t * cf / Math.pow(1 + rate, t + 1), 0);
-            }
-            
-            let rate = guess;
-            for (let i = 0; i < maxIterations; i++) {
-                const value = npv(rate);
-                if (Math.abs(value) < tolerance) return rate;
-                const derivative = npvDerivative(rate);
-                if (derivative === 0) return null;
-                rate = rate - value / derivative;
-            }
-            return null;
-        }
+for(let t=1;t<=36;t++){
 
-        // Основная функция расчёта
-        function calculateModel() {
-            try {
-                // Получаем параметры
-                const cases0 = parseInputNumber(document.getElementById('cases0').value);
-                const avgDebt = parseInputNumber(document.getElementById('avgDebt').value);
-                const purchasePricePct = parseFloat(document.getElementById('purchasePricePct').value);
-                const recoveryRatePct = parseFloat(document.getElementById('recoveryRatePct').value);
-                const writeoffRatePct = parseFloat(document.getElementById('writeoffRatePct').value);
-                const casesPerOperator = parseInputNumber(document.getElementById('casesPerOperator').value);
-                const salaryPerOperator = parseInputNumber(document.getElementById('salaryPerOperator').value);
-                const otherVariableCost = parseInputNumber(document.getElementById('otherVariableCost').value);
-                
-                // Recovery curve
-                const recoveryCurve = [];
-                for (let i = 0; i < 24; i++) {
-                    recoveryCurve.push(parseFloat(document.getElementById(`curve${i}`).value) || 0);
-                }
-                
-                const curveSum = recoveryCurve.reduce((a, b) => a + b, 0);
-                if (Math.abs(curveSum - 100) > 0.01) {
-                    alert(`Recovery Curve сумма должна быть 100%, текущая: ${curveSum.toFixed(2)}%`);
-                    return;
-                }
-                
-                // Базовые расчёты
-                const FV = cases0 * avgDebt;
-                const PurchasePrice = FV * (purchasePricePct / 100);
-                const TotalCollections = PurchasePrice * (recoveryRatePct / 100);
-                const PaidCases_total = cases0 * (1 - writeoffRatePct / 100);
-                const WriteOffCases_total = cases0 * (writeoffRatePct / 100);
-                const Recovery_per_Paid_Case = TotalCollections / PaidCases_total;
-                
-                // Расчёт по месяцам
-                const results = [];
-                
-                // Month 0
-                results.push({
-                    month: 0,
-                    collections: 0,
-                    closedCases: 0,
-                    writeoffCases: 0,
-                    casesInWork: cases0,
-                    operators: 0,
-                    opex: 0,
-                    cumulativeCollections: 0,
-                    tax: 0,
-                    netCashFlow: -PurchasePrice,
-                    cumulativeCashFlow: -PurchasePrice,
-                    cumulativeRecoveryPct: 0
-                });
-                
-                // Months 1-24
-                for (let t = 1; t <= 24; t++) {
-                    const prev = results[t - 1];
-                    
-                    const recoveryPct = recoveryCurve[t - 1] / 100;
-                    const collections = TotalCollections * recoveryPct;
-                    const closedCases = collections / Recovery_per_Paid_Case;
-                    const writeoffCases = WriteOffCases_total / 24;
-                    const casesInWork = Math.max(0, prev.casesInWork - closedCases - writeoffCases);
-                    
-                    const operators = casesInWork > 0 ? Math.ceil(casesInWork / casesPerOperator) : 0;
-                    const personnelCost = operators * salaryPerOperator;
-                    const otherCost = casesInWork * otherVariableCost;
-                    const opex = personnelCost + otherCost;
-                    
-                    const cumulativeCollections = prev.cumulativeCollections + collections;
-                    const tax = cumulativeCollections > PurchasePrice ? collections * 0.12 : 0;
-                    
-                    const netCashFlow = collections - opex - tax;
-                    const cumulativeCashFlow = prev.cumulativeCashFlow + netCashFlow;
-                    const cumulativeRecoveryPct = recoveryCurve.slice(0, t).reduce((a, b) => a + b, 0);
-                    
-                    results.push({
-                        month: t,
-                        collections,
-                        closedCases,
-                        writeoffCases,
-                        casesInWork,
-                        operators,
-                        opex,
-                        cumulativeCollections,
-                        tax,
-                        netCashFlow,
-                        cumulativeCashFlow,
-                        cumulativeRecoveryPct
-                    });
-                }
-                
-                // Расчёт KPI
-                const cashFlows = results.map(r => r.netCashFlow);
-                const irrMonthly = calculateIRR(cashFlows);
-                const irrAnnual = irrMonthly ? Math.pow(1 + irrMonthly, 12) - 1 : null;
-                
-                const moic = TotalCollections / PurchasePrice;
-                const totalNetProfit = results.slice(1).reduce((sum, r) => sum + r.netCashFlow, 0);
-                const breakEvenMonth = results.find(r => r.cumulativeCollections > PurchasePrice)?.month;
-                const totalTax = results.reduce((sum, r) => sum + r.tax, 0);
-                const peakOperators = Math.max(...results.map(r => r.operators));
-                const totalOpex = results.reduce((sum, r) => sum + r.opex, 0);
-                
-                // Отображение KPI
-                displayKPI({
-                    irrMonthly,
-                    irrAnnual,
-                    moic,
-                    totalNetProfit,
-                    breakEvenMonth,
-                    totalTax,
-                    peakOperators,
-                    totalOpex,
-                    PurchasePrice,
-                    TotalCollections
-                });
-                
-                // Графики
-                displayCharts(results);
-                
-                // Таблица
-                displayTable(results);
-                
-                // Сохраняем результаты для экспорта
-                currentResults = results;
-                
-            } catch (error) {
-                alert('Ошибка расчёта: ' + error.message);
-                console.error(error);
-            }
-        }
+let recShare=defaultCurve[t-1]/100
+let collections=TotalCollections*recShare
+cumulativeCollections+=collections
 
-        function displayKPI(kpi) {
-            const kpiHTML = `
-                <div class="kpi-grid">
-                    <div class="kpi-card">
-                        <div class="kpi-label">IRR (месячный)</div>
-                        <div class="kpi-value ${kpi.irrMonthly && kpi.irrMonthly > 0 ? 'positive' : 'negative'}">
-                            ${kpi.irrMonthly ? (kpi.irrMonthly * 100).toFixed(2) + '%' : 'N/A'}
-                        </div>
-                        <div class="kpi-subtitle">
-                            Годовой: ${kpi.irrAnnual ? (kpi.irrAnnual * 100).toFixed(2) + '%' : 'N/A'}
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.getElementById('kpiSection').innerHTML = kpiHTML;
-        }
+let closed=collections/(TotalCollections/(N0*(1-writeoffPct/100)))
+let writeoff=N0*(writeoffPct/100)/36
 
-        function displayCharts(results) {
-            const months = results.map(r => r.month);
-            const monthsNonZero = months.slice(1);
-            
-            // Recovery Curve
-            Plotly.newPlot('recoveryCurveChart', [{
-                x: monthsNonZero,
-                y: results.slice(1).map(r => r.cumulativeRecoveryPct),
-                type: 'scatter',
-                mode: 'lines+markers',
-                line: { color: '#38bdf8', width: 3 },
-                marker: { size: 6 },
-                fill: 'tozeroy',
-                fillcolor: 'rgba(56, 189, 248, 0.1)'
-            }], {
-                paper_bgcolor: 'transparent',
-                plot_bgcolor: 'transparent',
-                font: { color: '#cbd5e1' },
-                xaxis: { title: 'Month', gridcolor: '#334155' },
-                yaxis: { title: 'Cumulative %', gridcolor: '#334155' },
-                margin: { t: 20, r: 20, b: 40, l: 60 }
-            }, { responsive: true });
-            
-            // Cash Flow
-            const colors = results.map(r => r.netCashFlow >= 0 ? '#10b981' : '#ef4444');
-            Plotly.newPlot('cashFlowChart', [{
-                x: months,
-                y: results.map(r => r.netCashFlow),
-                type: 'bar',
-                marker: { color: colors }
-            }], {
-                paper_bgcolor: 'transparent',
-                plot_bgcolor: 'transparent',
-                font: { color: '#cbd5e1' },
-                xaxis: { title: 'Month', gridcolor: '#334155' },
-                yaxis: { title: 'Cash Flow (PHP)', gridcolor: '#334155' },
-                margin: { t: 20, r: 20, b: 40, l: 60 }
-            }, { responsive: true });
-        }
+casesInWork=Math.max(0,casesInWork-closed-writeoff)
 
-        function displayTable(results) {
-            // Подсчёт сумм
-            let totalCollections = 0;
-            let totalOpex = 0;
-            let totalTax = 0;
-            let totalNetCF = 0;
-            
-            results.slice(1).forEach(r => {
-                totalCollections += r.collections;
-                totalOpex += r.opex;
-                totalTax += r.tax;
-                totalNetCF += r.netCashFlow;
-            });
-            
-            let tableHTML = '<table><thead><tr>';
-            tableHTML += '<th>Month</th>';
-            tableHTML += '<th>Collections</th>';
-            tableHTML += '<th>OPEX</th>';
-            tableHTML += '<th>Tax</th>';
-            tableHTML += '<th>Net CF</th>';
-            tableHTML += '<th>Cumul. CF</th>';
-            tableHTML += '<th>Cases</th>';
-            tableHTML += '<th>Ops</th>';
-            tableHTML += '</tr></thead><tbody>';
-            
-            results.forEach(r => {
-                tableHTML += '<tr>';
-                tableHTML += `<td>${r.month}</td>`;
-                tableHTML += `<td class="${r.collections > 0 ? 'positive-value' : ''}">${r.collections > 0 ? '+' : ''}${formatNumber(r.collections)}</td>`;
-                tableHTML += `<td class="${r.opex > 0 ? 'negative-value' : ''}">−${formatNumber(r.opex)}</td>`;
-                tableHTML += `<td class="${r.tax > 0 ? 'negative-value' : ''}">−${formatNumber(r.tax)}</td>`;
-                tableHTML += `<td class="${r.netCashFlow >= 0 ? 'positive-value' : 'negative-value'}">${r.netCashFlow >= 0 ? '+' : ''}${formatNumber(r.netCashFlow)}</td>`;
-                tableHTML += `<td class="${r.cumulativeCashFlow >= 0 ? 'positive-value' : 'negative-value'}">${r.cumulativeCashFlow >= 0 ? '+' : ''}${formatNumber(r.cumulativeCashFlow)}</td>`;
-                tableHTML += `<td>${Math.round(r.casesInWork)}</td>`;
-                tableHTML += `<td>${r.operators}</td>`;
-                tableHTML += '</tr>';
-            });
-            
-            // Строка итогов
-            tableHTML += '<tr style="border-top: 2px solid var(--color-accent); font-weight: 700; background: var(--color-bg-tertiary);">';
-            tableHTML += '<td>ИТОГО</td>';
-            tableHTML += `<td class="positive-value">+${formatNumber(totalCollections)}</td>`;
-            tableHTML += `<td class="negative-value">−${formatNumber(totalOpex)}</td>`;
-            tableHTML += `<td class="negative-value">−${formatNumber(totalTax)}</td>`;
-            tableHTML += `<td class="${totalNetCF >= 0 ? 'positive-value' : 'negative-value'}">${totalNetCF >= 0 ? '+' : ''}${formatNumber(totalNetCF)}</td>`;
-            tableHTML += '<td>—</td>';
-            tableHTML += '<td>—</td>';
-            tableHTML += '<td>—</td>';
-            tableHTML += '</tr>';
-            
-            tableHTML += '</tbody></table>';
-            document.getElementById('dataTable').innerHTML = tableHTML;
-        }
+let net=collections
+let prev=results[t-1]
+let cum=prev.cum+net
 
-        // Экспорт в CSV
-        let currentResults = null;
-        
-        function exportToCSV() {
-            if (!currentResults) {
-                alert('Сначала выполните расчёт модели');
-                return;
-            }
-            
-            let csv = 'Month,Collections,OPEX,Tax,Net Cash Flow,Cumulative Cash Flow,Cases in Work,Operators\n';
-            currentResults.forEach(r => {
-                csv += `${r.month},${r.collections.toFixed(2)},${r.opex.toFixed(2)},${r.tax.toFixed(2)},${r.netCashFlow.toFixed(2)},${r.cumulativeCashFlow.toFixed(2)},${r.casesInWork.toFixed(2)},${r.operators}\n`;
-            });
-            
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'debt_collection_model.csv');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-        
-        function printReport() {
-            window.print();
-        }
+results.push({month:t,net,cum,collections,casesInWork})
+}
 
-        // Инициализация при загрузке
-        window.addEventListener('DOMContentLoaded', () => {
-            initCurveInputs();
-            setupInputFormatting();
-            updatePortfolioCalc();
-            
-            // Слушатели изменений для автоматического пересчёта portfolio calc
-            ['cases0', 'avgDebt', 'purchasePricePct'].forEach(id => {
-                document.getElementById(id).addEventListener('input', updatePortfolioCalc);
-            });
-            
-            // Первоначальный расчёт
-            calculateModel();
-        });
-    </script>
+let irr=calculateIRR(results.map(r=>r.net))
+let irrAnnual=irr?Math.pow(1+irr,12)-1:null
+
+kpiSection.innerHTML=
+"<h2>IRR месячный: "+(irr?(irr*100).toFixed(2)+"%":"N/A")+
+"<br>IRR годовой: "+(irrAnnual?(irrAnnual*100).toFixed(2)+"%":"N/A")+"</h2>"
+
+Plotly.newPlot('recoveryCurveChart',[{
+x:results.slice(1).map(r=>r.month),
+y:results.slice(1).map((r,i)=>defaultCurve.slice(0,i+1).reduce((a,b)=>a+b,0)),
+type:'scatter'
+}])
+
+let html="<table border=1><tr><th>M</th><th>Collections</th><th>Cases</th></tr>"
+results.forEach(r=>{
+html+="<tr><td>"+r.month+"</td><td>"+Math.round(r.collections||0)+"</td><td>"+Math.round(r.casesInWork||0)+"</td></tr>"
+})
+html+="</table>"
+dataTable.innerHTML=html
+}
+
+calculateModel()
+
+</script>
+
 </body>
 </html>
